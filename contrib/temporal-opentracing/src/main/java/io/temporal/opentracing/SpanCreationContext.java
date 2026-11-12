@@ -15,6 +15,7 @@ public class SpanCreationContext {
   private final String parentWorkflowId;
   private final String parentRunId;
   private final String activityId;
+  private final String namespace;
 
   private SpanCreationContext(
       SpanOperationType spanOperationType,
@@ -23,7 +24,8 @@ public class SpanCreationContext {
       String runId,
       String parentWorkflowId,
       String parentRunId,
-      String activityId) {
+      String activityId,
+      String namespace) {
     this.spanOperationType = spanOperationType;
     this.actionName = actionName;
     this.workflowId = workflowId;
@@ -31,6 +33,7 @@ public class SpanCreationContext {
     this.parentWorkflowId = parentWorkflowId;
     this.parentRunId = parentRunId;
     this.activityId = activityId;
+    this.namespace = namespace;
   }
 
   public SpanOperationType getSpanOperationType() {
@@ -66,6 +69,16 @@ public class SpanCreationContext {
     return activityId;
   }
 
+  /**
+   * Returns the namespace the traced operation runs in: the client's namespace for client-side
+   * spans, and the worker's namespace for worker-side spans.
+   *
+   * @return The namespace, or null if it is not known
+   */
+  public @Nullable String getNamespace() {
+    return namespace;
+  }
+
   public static Builder newBuilder() {
     return new Builder();
   }
@@ -78,6 +91,7 @@ public class SpanCreationContext {
     private String parentWorkflowId;
     private String parentRunId;
     private String activityId;
+    private String namespace;
 
     private Builder() {}
 
@@ -116,6 +130,11 @@ public class SpanCreationContext {
       return this;
     }
 
+    public Builder setNamespace(String namespace) {
+      this.namespace = namespace;
+      return this;
+    }
+
     public SpanCreationContext build() {
       return new SpanCreationContext(
           spanOperationType,
@@ -124,7 +143,8 @@ public class SpanCreationContext {
           runId,
           parentWorkflowId,
           parentRunId,
-          activityId);
+          activityId,
+          namespace);
     }
   }
 }

@@ -1,5 +1,6 @@
 package io.temporal.opentracing;
 
+import io.temporal.client.ActivityClientOptions;
 import io.temporal.common.interceptors.ActivityClientCallsInterceptor;
 import io.temporal.common.interceptors.ActivityClientInterceptorBase;
 import io.temporal.opentracing.internal.ContextAccessor;
@@ -26,5 +27,12 @@ public class OpenTracingActivityClientInterceptor extends ActivityClientIntercep
       ActivityClientCallsInterceptor next) {
     return new OpenTracingActivityClientCallsInterceptor(
         next, options, spanFactory, contextAccessor);
+  }
+
+  @Override
+  public ActivityClientCallsInterceptor activityClientCallsInterceptor(
+      ActivityClientOptions clientOptions, ActivityClientCallsInterceptor next) {
+    return new OpenTracingActivityClientCallsInterceptor(
+        next, options, spanFactory, contextAccessor, clientOptions.getNamespace());
   }
 }

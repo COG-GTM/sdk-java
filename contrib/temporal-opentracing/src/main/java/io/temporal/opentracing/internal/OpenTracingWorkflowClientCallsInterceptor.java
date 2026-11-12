@@ -8,18 +8,30 @@ import io.temporal.common.interceptors.WorkflowClientCallsInterceptor;
 import io.temporal.common.interceptors.WorkflowClientCallsInterceptorBase;
 import io.temporal.opentracing.OpenTracingOptions;
 import io.temporal.opentracing.SpanOperationType;
+import javax.annotation.Nullable;
 
 public class OpenTracingWorkflowClientCallsInterceptor extends WorkflowClientCallsInterceptorBase {
   private final SpanFactory spanFactory;
   private final Tracer tracer;
   private final ContextAccessor contextAccessor;
+  private final @Nullable String namespace;
 
   public OpenTracingWorkflowClientCallsInterceptor(
       WorkflowClientCallsInterceptor next,
       OpenTracingOptions options,
       SpanFactory spanFactory,
       ContextAccessor contextAccessor) {
+    this(next, options, spanFactory, contextAccessor, null);
+  }
+
+  public OpenTracingWorkflowClientCallsInterceptor(
+      WorkflowClientCallsInterceptor next,
+      OpenTracingOptions options,
+      SpanFactory spanFactory,
+      ContextAccessor contextAccessor,
+      @Nullable String namespace) {
     super(next);
+    this.namespace = namespace;
     this.spanFactory = spanFactory;
     this.tracer = options.getTracer();
     this.contextAccessor = contextAccessor;
@@ -47,6 +59,7 @@ public class OpenTracingWorkflowClientCallsInterceptor extends WorkflowClientCal
                 spanFactory
                     .createWorkflowSignalSpan(
                         tracer,
+                        namespace,
                         input.getSignalName(),
                         input.getWorkflowExecution().getWorkflowId(),
                         input.getWorkflowExecution().getRunId())
@@ -108,6 +121,7 @@ public class OpenTracingWorkflowClientCallsInterceptor extends WorkflowClientCal
                 spanFactory
                     .createWorkflowQuerySpan(
                         tracer,
+                        namespace,
                         input.getQueryType(),
                         input.getWorkflowExecution().getWorkflowId(),
                         input.getWorkflowExecution().getRunId())
@@ -129,6 +143,7 @@ public class OpenTracingWorkflowClientCallsInterceptor extends WorkflowClientCal
                 spanFactory
                     .createWorkflowStartUpdateSpan(
                         tracer,
+                        namespace,
                         input.getUpdateName(),
                         input.getWorkflowExecution().getWorkflowId(),
                         input.getWorkflowExecution().getRunId())
@@ -145,6 +160,6 @@ public class OpenTracingWorkflowClientCallsInterceptor extends WorkflowClientCal
   private Tracer.SpanBuilder createWorkflowStartSpanBuilder(
       WorkflowStartInput input, SpanOperationType operationType) {
     return spanFactory.createWorkflowStartSpan(
-        tracer, operationType, input.getWorkflowType(), input.getWorkflowId());
+        tracer, namespace, operationType, input.getWorkflowType(), input.getWorkflowId());
   }
 }

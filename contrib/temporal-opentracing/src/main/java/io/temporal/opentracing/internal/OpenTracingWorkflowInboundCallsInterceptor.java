@@ -44,6 +44,7 @@ public class OpenTracingWorkflowInboundCallsInterceptor
         spanFactory
             .createWorkflowRunSpan(
                 tracer,
+                Workflow.getInfo().getNamespace(),
                 Workflow.getInfo().getWorkflowType(),
                 Workflow.getInfo().getWorkflowId(),
                 Workflow.getInfo().getRunId(),
@@ -72,6 +73,7 @@ public class OpenTracingWorkflowInboundCallsInterceptor
         spanFactory
             .createWorkflowHandleSignalSpan(
                 tracer,
+                Workflow.getInfo().getNamespace(),
                 input.getSignalName(),
                 Workflow.getInfo().getWorkflowId(),
                 Workflow.getInfo().getRunId(),
@@ -98,7 +100,8 @@ public class OpenTracingWorkflowInboundCallsInterceptor
         contextAccessor.readSpanContextFromHeader(input.getHeader(), tracer);
     Span workflowQuerySpan =
         spanFactory
-            .createWorkflowHandleQuerySpan(tracer, input.getQueryName(), rootSpanContext)
+            .createWorkflowHandleQuerySpan(
+                tracer, Workflow.getInfo().getNamespace(), input.getQueryName(), rootSpanContext)
             .start();
     try (Scope ignored = tracer.scopeManager().activate(workflowQuerySpan)) {
       return super.handleQuery(input);
@@ -123,6 +126,7 @@ public class OpenTracingWorkflowInboundCallsInterceptor
         spanFactory
             .createWorkflowExecuteUpdateSpan(
                 tracer,
+                Workflow.getInfo().getNamespace(),
                 input.getUpdateName(),
                 Workflow.getInfo().getWorkflowId(),
                 Workflow.getInfo().getRunId(),

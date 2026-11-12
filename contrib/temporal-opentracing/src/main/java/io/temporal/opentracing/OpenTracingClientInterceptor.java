@@ -1,5 +1,6 @@
 package io.temporal.opentracing;
 
+import io.temporal.client.WorkflowClientOptions;
 import io.temporal.common.interceptors.WorkflowClientCallsInterceptor;
 import io.temporal.common.interceptors.WorkflowClientInterceptorBase;
 import io.temporal.opentracing.internal.ContextAccessor;
@@ -26,5 +27,12 @@ public class OpenTracingClientInterceptor extends WorkflowClientInterceptorBase 
       WorkflowClientCallsInterceptor next) {
     return new OpenTracingWorkflowClientCallsInterceptor(
         next, options, spanFactory, contextAccessor);
+  }
+
+  @Override
+  public WorkflowClientCallsInterceptor workflowClientCallsInterceptor(
+      WorkflowClientOptions clientOptions, WorkflowClientCallsInterceptor next) {
+    return new OpenTracingWorkflowClientCallsInterceptor(
+        next, options, spanFactory, contextAccessor, clientOptions.getNamespace());
   }
 }

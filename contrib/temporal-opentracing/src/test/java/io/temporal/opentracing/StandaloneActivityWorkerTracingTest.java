@@ -55,7 +55,7 @@ public class StandaloneActivityWorkerTracingTest {
             () ->
                 spanFactory
                     .createActivityStartSpan(
-                        mockTracer, "MyStandaloneActivity", null, null, "act-run")
+                        mockTracer, "my-namespace", "MyStandaloneActivity", null, null, "act-run")
                     .start(),
             header,
             mockTracer);
@@ -66,6 +66,7 @@ public class StandaloneActivityWorkerTracingTest {
     when(activityInfo.isInWorkflow()).thenReturn(false);
     when(activityInfo.getActivityType()).thenReturn("MyStandaloneActivity");
     when(activityInfo.getActivityId()).thenReturn("act-run");
+    when(activityInfo.getNamespace()).thenReturn("my-namespace");
     when(executionContext.getInfo()).thenReturn(activityInfo);
 
     interceptor.init(executionContext);
@@ -77,6 +78,8 @@ public class StandaloneActivityWorkerTracingTest {
     assertEquals("act-run", runSpan.tags().get("activityId"));
     assertNull(runSpan.tags().get("workflowId"));
     assertNull(runSpan.tags().get("runId"));
+    assertEquals("my-namespace", startSpan.tags().get(StandardTagNames.NAMESPACE));
+    assertEquals("my-namespace", runSpan.tags().get(StandardTagNames.NAMESPACE));
     assertEquals(startSpan.context().spanId(), runSpan.parentId());
   }
 

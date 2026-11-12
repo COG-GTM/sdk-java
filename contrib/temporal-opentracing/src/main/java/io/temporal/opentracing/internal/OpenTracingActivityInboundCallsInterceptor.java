@@ -49,6 +49,7 @@ public class OpenTracingActivityInboundCallsInterceptor
         spanFactory
             .createActivityRunSpan(
                 tracer,
+                activityInfo.getNamespace(),
                 activityInfo.getActivityType(),
                 activityInfo.getWorkflowId(),
                 activityInfo.getWorkflowRunId(),

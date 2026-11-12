@@ -198,6 +198,7 @@ public class OpenTracingWorkflowOutboundCallsInterceptor
                   spanFactory
                       .createExternalWorkflowSignalSpan(
                           tracer,
+                          Workflow.getInfo().getNamespace(),
                           input.getSignalName(),
                           workflowInfo.getWorkflowId(),
                           workflowInfo.getRunId())
@@ -251,13 +252,19 @@ public class OpenTracingWorkflowOutboundCallsInterceptor
   private Tracer.SpanBuilder createActivityStartSpanBuilder(String activityName) {
     WorkflowInfo workflowInfo = Workflow.getInfo();
     return spanFactory.createActivityStartSpan(
-        tracer, activityName, workflowInfo.getWorkflowId(), workflowInfo.getRunId(), null);
+        tracer,
+        Workflow.getInfo().getNamespace(),
+        activityName,
+        workflowInfo.getWorkflowId(),
+        workflowInfo.getRunId(),
+        null);
   }
 
   private <R> Tracer.SpanBuilder createChildWorkflowStartSpanBuilder(ChildWorkflowInput<R> input) {
     WorkflowInfo parentWorkflowInfo = Workflow.getInfo();
     return spanFactory.createChildWorkflowStartSpan(
         tracer,
+        Workflow.getInfo().getNamespace(),
         input.getWorkflowType(),
         input.getWorkflowId(),
         Workflow.currentTimeMillis(),
@@ -270,6 +277,7 @@ public class OpenTracingWorkflowOutboundCallsInterceptor
     WorkflowInfo parentWorkflowInfo = Workflow.getInfo();
     return spanFactory.createStartNexusOperationSpan(
         tracer,
+        Workflow.getInfo().getNamespace(),
         input.getService(),
         input.getOperation(),
         parentWorkflowInfo.getWorkflowId(),
@@ -280,6 +288,7 @@ public class OpenTracingWorkflowOutboundCallsInterceptor
     WorkflowInfo continuedWorkflowInfo = Workflow.getInfo();
     return spanFactory.createContinueAsNewWorkflowStartSpan(
         tracer,
+        Workflow.getInfo().getNamespace(),
         MoreObjects.firstNonNull(input.getWorkflowType(), continuedWorkflowInfo.getWorkflowType()),
         continuedWorkflowInfo.getWorkflowId(),
         continuedWorkflowInfo.getRunId());

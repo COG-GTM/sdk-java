@@ -180,5 +180,15 @@ public class NexusOperationTest {
     MockSpan otherWorkflowRunSpan = spansHelper.getByParentSpan(startOtherWorkflowSpan).get(0);
     assertEquals(startOtherWorkflowSpan.context().spanId(), otherWorkflowRunSpan.parentId());
     assertEquals("RunWorkflow:TestOtherWorkflow", otherWorkflowRunSpan.operationName());
+
+    String namespace = client.getOptions().getNamespace();
+    for (MockSpan s : mockTracer.finishedSpans()) {
+      if (s != clientSpan) {
+        assertEquals(
+            "Span " + s.operationName() + " should have the namespace tag",
+            namespace,
+            s.tags().get(StandardTagNames.NAMESPACE));
+      }
+    }
   }
 }

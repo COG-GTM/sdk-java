@@ -28,11 +28,16 @@ public class SpanFactory {
   }
 
   public Tracer.SpanBuilder createWorkflowStartSpan(
-      Tracer tracer, SpanOperationType operationType, String workflowType, String workflowId) {
+      Tracer tracer,
+      @Nullable String namespace,
+      SpanOperationType operationType,
+      String workflowType,
+      String workflowId) {
 
     SpanCreationContext context =
         SpanCreationContext.newBuilder()
             .setSpanOperationType(operationType)
+            .setNamespace(namespace)
             .setActionName(workflowType)
             .setWorkflowId(workflowId)
             .build();
@@ -41,10 +46,16 @@ public class SpanFactory {
   }
 
   public Tracer.SpanBuilder createStartNexusOperationSpan(
-      Tracer tracer, String serviceName, String operationName, String workflowId, String runId) {
+      Tracer tracer,
+      @Nullable String namespace,
+      String serviceName,
+      String operationName,
+      String workflowId,
+      String runId) {
     SpanCreationContext context =
         SpanCreationContext.newBuilder()
             .setSpanOperationType(SpanOperationType.START_NEXUS_OPERATION)
+            .setNamespace(namespace)
             .setActionName(serviceName + "/" + operationName)
             .setWorkflowId(workflowId)
             .setRunId(runId)
@@ -54,6 +65,7 @@ public class SpanFactory {
 
   public Tracer.SpanBuilder createChildWorkflowStartSpan(
       Tracer tracer,
+      @Nullable String namespace,
       String childWorkflowType,
       String childWorkflowId,
       long startTimeMs,
@@ -62,6 +74,7 @@ public class SpanFactory {
     SpanCreationContext context =
         SpanCreationContext.newBuilder()
             .setSpanOperationType(SpanOperationType.START_CHILD_WORKFLOW)
+            .setNamespace(namespace)
             .setActionName(childWorkflowType)
             .setWorkflowId(childWorkflowId)
             .setParentWorkflowId(parentWorkflowId)
@@ -71,10 +84,15 @@ public class SpanFactory {
   }
 
   public Tracer.SpanBuilder createExternalWorkflowSignalSpan(
-      Tracer tracer, String signalName, String workflowId, String runId) {
+      Tracer tracer,
+      @Nullable String namespace,
+      String signalName,
+      String workflowId,
+      String runId) {
     SpanCreationContext context =
         SpanCreationContext.newBuilder()
             .setSpanOperationType(SpanOperationType.SIGNAL_EXTERNAL_WORKFLOW)
+            .setNamespace(namespace)
             .setActionName(signalName)
             .setWorkflowId(workflowId)
             .setRunId(runId)
@@ -83,10 +101,15 @@ public class SpanFactory {
   }
 
   public Tracer.SpanBuilder createWorkflowSignalSpan(
-      Tracer tracer, String signalName, String workflowId, String runId) {
+      Tracer tracer,
+      @Nullable String namespace,
+      String signalName,
+      String workflowId,
+      String runId) {
     SpanCreationContext context =
         SpanCreationContext.newBuilder()
             .setSpanOperationType(SpanOperationType.SIGNAL_WORKFLOW)
+            .setNamespace(namespace)
             .setActionName(signalName)
             .setWorkflowId(workflowId)
             .setRunId(runId)
@@ -96,6 +119,7 @@ public class SpanFactory {
 
   public Tracer.SpanBuilder createWorkflowHandleSignalSpan(
       Tracer tracer,
+      @Nullable String namespace,
       String signalName,
       String workflowId,
       String runId,
@@ -103,6 +127,7 @@ public class SpanFactory {
     SpanCreationContext context =
         SpanCreationContext.newBuilder()
             .setSpanOperationType(SpanOperationType.HANDLE_SIGNAL)
+            .setNamespace(namespace)
             .setActionName(signalName)
             .setWorkflowId(workflowId)
             .setRunId(runId)
@@ -111,10 +136,15 @@ public class SpanFactory {
   }
 
   public Tracer.SpanBuilder createContinueAsNewWorkflowStartSpan(
-      Tracer tracer, String continueAsNewWorkflowType, String workflowId, String parentRunId) {
+      Tracer tracer,
+      @Nullable String namespace,
+      String continueAsNewWorkflowType,
+      String workflowId,
+      String parentRunId) {
     SpanCreationContext context =
         SpanCreationContext.newBuilder()
             .setSpanOperationType(SpanOperationType.START_CONTINUE_AS_NEW_WORKFLOW)
+            .setNamespace(namespace)
             .setActionName(continueAsNewWorkflowType)
             .setWorkflowId(workflowId)
             .setParentRunId(parentRunId)
@@ -124,6 +154,7 @@ public class SpanFactory {
 
   public Tracer.SpanBuilder createWorkflowRunSpan(
       Tracer tracer,
+      @Nullable String namespace,
       String workflowType,
       String workflowId,
       String runId,
@@ -131,6 +162,7 @@ public class SpanFactory {
     SpanCreationContext context =
         SpanCreationContext.newBuilder()
             .setSpanOperationType(SpanOperationType.RUN_WORKFLOW)
+            .setNamespace(namespace)
             .setActionName(workflowType)
             .setWorkflowId(workflowId)
             .setRunId(runId)
@@ -140,6 +172,7 @@ public class SpanFactory {
 
   public Tracer.SpanBuilder createActivityStartSpan(
       Tracer tracer,
+      @Nullable String namespace,
       String activityType,
       @Nullable String workflowId,
       @Nullable String runId,
@@ -147,6 +180,7 @@ public class SpanFactory {
     SpanCreationContext context =
         SpanCreationContext.newBuilder()
             .setSpanOperationType(SpanOperationType.START_ACTIVITY)
+            .setNamespace(namespace)
             .setActionName(activityType)
             .setWorkflowId(workflowId)
             .setRunId(runId)
@@ -157,6 +191,7 @@ public class SpanFactory {
 
   public Tracer.SpanBuilder createActivityRunSpan(
       Tracer tracer,
+      @Nullable String namespace,
       String activityType,
       @Nullable String workflowId,
       @Nullable String runId,
@@ -165,6 +200,7 @@ public class SpanFactory {
     SpanCreationContext context =
         SpanCreationContext.newBuilder()
             .setSpanOperationType(SpanOperationType.RUN_ACTIVITY)
+            .setNamespace(namespace)
             .setActionName(activityType)
             .setWorkflowId(workflowId)
             .setRunId(runId)
@@ -174,30 +210,45 @@ public class SpanFactory {
   }
 
   public Tracer.SpanBuilder createStartNexusOperationSpan(
-      Tracer tracer, String serviceName, String operationName, SpanContext nexusStartSpanContext) {
+      Tracer tracer,
+      @Nullable String namespace,
+      String serviceName,
+      String operationName,
+      SpanContext nexusStartSpanContext) {
     SpanCreationContext context =
         SpanCreationContext.newBuilder()
             .setSpanOperationType(SpanOperationType.RUN_START_NEXUS_OPERATION)
+            .setNamespace(namespace)
             .setActionName(serviceName + "/" + operationName)
             .build();
     return createSpan(context, tracer, nexusStartSpanContext, References.FOLLOWS_FROM);
   }
 
   public Tracer.SpanBuilder createCancelNexusOperationSpan(
-      Tracer tracer, String serviceName, String operationName, SpanContext nexusStartSpanContext) {
+      Tracer tracer,
+      @Nullable String namespace,
+      String serviceName,
+      String operationName,
+      SpanContext nexusStartSpanContext) {
     SpanCreationContext context =
         SpanCreationContext.newBuilder()
             .setSpanOperationType(SpanOperationType.RUN_CANCEL_NEXUS_OPERATION)
+            .setNamespace(namespace)
             .setActionName(serviceName + "/" + operationName)
             .build();
     return createSpan(context, tracer, nexusStartSpanContext, References.FOLLOWS_FROM);
   }
 
   public Tracer.SpanBuilder createWorkflowStartUpdateSpan(
-      Tracer tracer, String updateName, String workflowId, String runId) {
+      Tracer tracer,
+      @Nullable String namespace,
+      String updateName,
+      String workflowId,
+      String runId) {
     SpanCreationContext context =
         SpanCreationContext.newBuilder()
             .setSpanOperationType(SpanOperationType.UPDATE_WORKFLOW)
+            .setNamespace(namespace)
             .setActionName(updateName)
             .setWorkflowId(workflowId)
             .setRunId(runId)
@@ -207,6 +258,7 @@ public class SpanFactory {
 
   public Tracer.SpanBuilder createWorkflowExecuteUpdateSpan(
       Tracer tracer,
+      @Nullable String namespace,
       String updateName,
       String workflowId,
       String runId,
@@ -214,6 +266,7 @@ public class SpanFactory {
     SpanCreationContext context =
         SpanCreationContext.newBuilder()
             .setSpanOperationType(SpanOperationType.HANDLE_UPDATE)
+            .setNamespace(namespace)
             .setActionName(updateName)
             .setWorkflowId(workflowId)
             .setRunId(runId)
@@ -222,10 +275,15 @@ public class SpanFactory {
   }
 
   public Tracer.SpanBuilder createWorkflowQuerySpan(
-      Tracer tracer, String updateName, String workflowId, String runId) {
+      Tracer tracer,
+      @Nullable String namespace,
+      String updateName,
+      String workflowId,
+      String runId) {
     SpanCreationContext context =
         SpanCreationContext.newBuilder()
             .setSpanOperationType(SpanOperationType.QUERY_WORKFLOW)
+            .setNamespace(namespace)
             .setActionName(updateName)
             .setWorkflowId(workflowId)
             .setRunId(runId)
@@ -234,10 +292,14 @@ public class SpanFactory {
   }
 
   public Tracer.SpanBuilder createWorkflowHandleQuerySpan(
-      Tracer tracer, String queryName, SpanContext workflowQuerySpanContext) {
+      Tracer tracer,
+      @Nullable String namespace,
+      String queryName,
+      SpanContext workflowQuerySpanContext) {
     SpanCreationContext context =
         SpanCreationContext.newBuilder()
             .setSpanOperationType(SpanOperationType.HANDLE_QUERY)
+            .setNamespace(namespace)
             .setActionName(queryName)
             .build();
     return createSpan(context, tracer, workflowQuerySpanContext, References.FOLLOWS_FROM);

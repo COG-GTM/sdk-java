@@ -7,7 +7,9 @@ import io.opentracing.SpanContext;
 import io.opentracing.Tracer;
 import io.temporal.common.interceptors.NexusOperationInboundCallsInterceptor;
 import io.temporal.common.interceptors.NexusOperationInboundCallsInterceptorBase;
+import io.temporal.common.interceptors.NexusOperationOutboundCallsInterceptor;
 import io.temporal.opentracing.OpenTracingOptions;
+import javax.annotation.Nullable;
 
 public class OpenTracingNexusOperationInboundCallsInterceptor
     extends NexusOperationInboundCallsInterceptorBase {
@@ -15,6 +17,7 @@ public class OpenTracingNexusOperationInboundCallsInterceptor
   private final SpanFactory spanFactory;
   private final Tracer tracer;
   private final ContextAccessor contextAccessor;
+  private NexusOperationOutboundCallsInterceptor outboundCalls;
 
   public OpenTracingNexusOperationInboundCallsInterceptor(
       NexusOperationInboundCallsInterceptor next,
@@ -29,6 +32,12 @@ public class OpenTracingNexusOperationInboundCallsInterceptor
   }
 
   @Override
+  public void init(NexusOperationOutboundCallsInterceptor outboundCalls) {
+    this.outboundCalls = outboundCalls;
+    super.init(outboundCalls);
+  }
+
+  @Override
   public StartOperationOutput startOperation(StartOperationInput input) throws OperationException {
     SpanContext rootSpanContext =
         contextAccessor.readSpanContextFromHeader(input.getOperationContext().getHeaders(), tracer);
@@ -37,6 +46,7 @@ public class OpenTracingNexusOperationInboundCallsInterceptor
         spanFactory
             .createStartNexusOperationSpan(
                 tracer,
+                getNamespace(),
                 input.getOperationContext().getService(),
                 input.getOperationContext().getOperation(),
                 rootSpanContext)
@@ -60,6 +70,7 @@ public class OpenTracingNexusOperationInboundCallsInterceptor
         spanFactory
             .createCancelNexusOperationSpan(
                 tracer,
+                getNamespace(),
                 input.getOperationContext().getService(),
                 input.getOperationContext().getOperation(),
                 rootSpanContext)
@@ -72,5 +83,10 @@ public class OpenTracingNexusOperationInboundCallsInterceptor
     } finally {
       operationCancelSpan.finish();
     }
+  }
+
+  @Nullable
+  private String getNamespace() {
+    return outboundCalls != null ? outboundCalls.getInfo().getNamespace() : null;
   }
 }

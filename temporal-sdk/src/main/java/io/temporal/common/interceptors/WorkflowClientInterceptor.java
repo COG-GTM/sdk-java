@@ -2,6 +2,7 @@ package io.temporal.common.interceptors;
 
 import io.temporal.api.common.v1.WorkflowExecution;
 import io.temporal.client.ActivityCompletionClient;
+import io.temporal.client.WorkflowClientOptions;
 import io.temporal.client.WorkflowOptions;
 import io.temporal.client.WorkflowStub;
 import io.temporal.common.Experimental;
@@ -47,4 +48,22 @@ public interface WorkflowClientInterceptor {
    */
   WorkflowClientCallsInterceptor workflowClientCallsInterceptor(
       WorkflowClientCallsInterceptor next);
+
+  /**
+   * Called once during creation of WorkflowClient to create a chain of Client Workflow
+   * Interceptors. Unlike {@link #workflowClientCallsInterceptor(WorkflowClientCallsInterceptor)},
+   * this method also receives the options of the client being created, for example to access its
+   * namespace.
+   *
+   * <p>The default implementation delegates to {@link
+   * #workflowClientCallsInterceptor(WorkflowClientCallsInterceptor)}.
+   *
+   * @param options options of the WorkflowClient being created
+   * @param next next workflow client interceptor in the chain of interceptors
+   * @return new interceptor that should decorate calls to {@code next}
+   */
+  default WorkflowClientCallsInterceptor workflowClientCallsInterceptor(
+      WorkflowClientOptions options, WorkflowClientCallsInterceptor next) {
+    return workflowClientCallsInterceptor(next);
+  }
 }

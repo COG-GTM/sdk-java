@@ -156,7 +156,7 @@ final class WorkflowClientInternalImpl implements WorkflowClient, WorkflowClient
             externalStorageRunner);
     for (WorkflowClientInterceptor clientInterceptor : interceptors) {
       workflowClientInvoker =
-          clientInterceptor.workflowClientCallsInterceptor(workflowClientInvoker);
+          clientInterceptor.workflowClientCallsInterceptor(options, workflowClientInvoker);
     }
     return workflowClientInvoker;
   }

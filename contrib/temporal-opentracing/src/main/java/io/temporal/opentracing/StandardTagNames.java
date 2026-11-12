@@ -7,6 +7,9 @@ public class StandardTagNames {
   public static final String PARENT_WORKFLOW_ID = "parentWorkflowId";
   public static final String PARENT_RUN_ID = "parentRunId";
 
+  /** Namespace of the client or worker the traced operation runs in. */
+  public static final String NAMESPACE = "temporalNamespace";
+
   /**
    * @deprecated use {@link io.opentracing.tag.Tags#ERROR}
    */

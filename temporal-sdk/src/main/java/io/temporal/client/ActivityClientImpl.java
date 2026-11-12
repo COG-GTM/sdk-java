@@ -74,7 +74,7 @@ class ActivityClientImpl implements ActivityClient, ActivityClientInternal {
             dataConverter,
             externalStorage);
     for (ActivityClientInterceptor interceptor : options.getInterceptors()) {
-      invoker = interceptor.activityClientCallsInterceptor(invoker);
+      invoker = interceptor.activityClientCallsInterceptor(options, invoker);
     }
     return invoker;
   }

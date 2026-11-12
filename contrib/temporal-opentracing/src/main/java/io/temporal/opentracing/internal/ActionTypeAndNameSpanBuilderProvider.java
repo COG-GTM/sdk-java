@@ -14,7 +14,8 @@ import java.util.Map;
  * SpanOperationType} and the {@link SpanCreationContext#getActionName()} as the name of the
  * OpenTracing span, e.g "StartActivity:LoadUsersFromDatabaseActivity". <br>
  * This class also provides any available IDs, such as workflow ID, run ID, or parent workflow/run
- * ID, as tags depending on the context of the operation.
+ * ID, as tags depending on the context of the operation, and the namespace of the operation as the
+ * {@link StandardTagNames#NAMESPACE} tag.
  */
 public class ActionTypeAndNameSpanBuilderProvider implements SpanBuilderProvider {
   public static final ActionTypeAndNameSpanBuilderProvider INSTANCE =
@@ -51,6 +52,18 @@ public class ActionTypeAndNameSpanBuilderProvider implements SpanBuilderProvider
    * @return The map of tags for the span
    */
   protected Map<String, String> getSpanTags(SpanCreationContext context) {
+    Map<String, String> operationTags = getOperationSpanTags(context);
+    String namespace = context.getNamespace();
+    if (namespace == null) {
+      return operationTags;
+    }
+    return ImmutableMap.<String, String>builder()
+        .putAll(operationTags)
+        .put(StandardTagNames.NAMESPACE, namespace)
+        .build();
+  }
+
+  private Map<String, String> getOperationSpanTags(SpanCreationContext context) {
     SpanOperationType operationType = context.getSpanOperationType();
     switch (operationType) {
       case START_WORKFLOW:

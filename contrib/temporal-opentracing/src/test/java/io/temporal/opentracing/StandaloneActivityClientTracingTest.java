@@ -6,6 +6,7 @@ import io.opentracing.mock.MockSpan;
 import io.opentracing.mock.MockTracer;
 import io.opentracing.util.ThreadLocalScopeManager;
 import io.temporal.api.workflowservice.v1.CountActivityExecutionsResponse;
+import io.temporal.client.ActivityClientOptions;
 import io.temporal.client.ActivityExecutionCount;
 import io.temporal.client.DescribeActivityOptions;
 import io.temporal.client.StartActivityOptions;
@@ -73,6 +74,29 @@ public class StandaloneActivityClientTracingTest {
     assertEquals("StartActivity:MyActivity", span.operationName());
     assertEquals("act-123", span.tags().get("activityId"));
     assertFalse("Trace context should be propagated into header", header.getValues().isEmpty());
+  }
+
+  @Test
+  public void testStartActivitySpanHasClientNamespaceTag() {
+    ActivityClientCallsInterceptor namespacedInterceptor =
+        new OpenTracingActivityClientInterceptor(otOptions)
+            .activityClientCallsInterceptor(
+                ActivityClientOptions.newBuilder().setNamespace("my-namespace").build(),
+                new StubActivityClientCallsInterceptor());
+    StartActivityOptions opts =
+        StartActivityOptions.newBuilder()
+            .setId("act-ns")
+            .setTaskQueue("tq")
+            .setScheduleToCloseTimeout(Duration.ofMinutes(1))
+            .build();
+
+    namespacedInterceptor.startActivity(
+        new ActivityClientCallsInterceptor.StartActivityInput(
+            "MyActivity", Collections.emptyList(), opts, Header.empty()));
+
+    List<MockSpan> spans = mockTracer.finishedSpans();
+    assertEquals(1, spans.size());
+    assertEquals("my-namespace", spans.get(0).tags().get(StandardTagNames.NAMESPACE));
   }
 
   @Test

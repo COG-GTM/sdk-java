@@ -34,6 +34,10 @@ to docs, or any other relevant information.
   `WorkflowServiceStubsOptions.Builder.setPayloadLimits`.
 
 ### Added
+- OpenTracing spans now carry a `temporalNamespace` tag (`StandardTagNames.NAMESPACE`) with the
+  namespace of the client or worker the operation runs in. To support this,
+  `WorkflowClientInterceptor` and `ActivityClientInterceptor` have new default overloads that also
+  receive the client options.
 - Tracing options and `ContextPropagator.encodeHeaders()` can opt into header processing using
   the configured client's payload codec. Only opted-in producers' output is encoded, while
   application-supplied wire-ready headers are unchanged. Receiving consumers use private decoded

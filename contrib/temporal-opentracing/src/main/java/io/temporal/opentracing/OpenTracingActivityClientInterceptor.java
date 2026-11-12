@@ -11,6 +11,7 @@ public class OpenTracingActivityClientInterceptor extends ActivityClientIntercep
   private final OpenTracingOptions options;
   private final SpanFactory spanFactory;
   private final ContextAccessor contextAccessor;
+  private final boolean overridesSingleArgMethod;
 
   public OpenTracingActivityClientInterceptor() {
     this(OpenTracingOptions.getDefaultInstance());
@@ -20,6 +21,7 @@ public class OpenTracingActivityClientInterceptor extends ActivityClientIntercep
     this.options = options;
     this.spanFactory = new SpanFactory(options);
     this.contextAccessor = new ContextAccessor(options);
+    this.overridesSingleArgMethod = overridesSingleArgMethod();
   }
 
   @Override
@@ -32,7 +34,22 @@ public class OpenTracingActivityClientInterceptor extends ActivityClientIntercep
   @Override
   public ActivityClientCallsInterceptor activityClientCallsInterceptor(
       ActivityClientOptions clientOptions, ActivityClientCallsInterceptor next) {
+    if (overridesSingleArgMethod) {
+      // Keep subclass customizations of the single-argument method working.
+      return activityClientCallsInterceptor(next);
+    }
     return new OpenTracingActivityClientCallsInterceptor(
         next, options, spanFactory, contextAccessor, clientOptions.getNamespace());
+  }
+
+  private boolean overridesSingleArgMethod() {
+    try {
+      return getClass()
+              .getMethod("activityClientCallsInterceptor", ActivityClientCallsInterceptor.class)
+              .getDeclaringClass()
+          != OpenTracingActivityClientInterceptor.class;
+    } catch (NoSuchMethodException e) {
+      throw new IllegalStateException(e);
+    }
   }
 }

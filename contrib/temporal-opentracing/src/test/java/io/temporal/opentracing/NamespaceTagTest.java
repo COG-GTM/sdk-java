@@ -10,10 +10,20 @@ import io.temporal.activity.ActivityInterface;
 import io.temporal.activity.ActivityMethod;
 import io.temporal.activity.ActivityOptions;
 import io.temporal.activity.LocalActivityOptions;
+import io.temporal.api.common.v1.WorkflowExecution;
+import io.temporal.client.ActivityClient;
+import io.temporal.client.ActivityClientOptions;
+import io.temporal.client.StartActivityOptions;
 import io.temporal.client.WorkflowClient;
 import io.temporal.client.WorkflowClientOptions;
 import io.temporal.client.WorkflowOptions;
 import io.temporal.client.WorkflowStub;
+import io.temporal.common.interceptors.ActivityClientCallsInterceptor;
+import io.temporal.common.interceptors.ActivityClientCallsInterceptorBase;
+import io.temporal.common.interceptors.ActivityClientInterceptorBase;
+import io.temporal.common.interceptors.WorkflowClientCallsInterceptor;
+import io.temporal.common.interceptors.WorkflowClientCallsInterceptorBase;
+import io.temporal.common.interceptors.WorkflowClientInterceptorBase;
 import io.temporal.opentracing.internal.ActionTypeAndNameSpanBuilderProvider;
 import io.temporal.testing.internal.SDKTestWorkflowRule;
 import io.temporal.worker.WorkerFactoryOptions;
@@ -25,14 +35,18 @@ import io.temporal.workflow.Workflow;
 import io.temporal.workflow.WorkflowInterface;
 import io.temporal.workflow.WorkflowMethod;
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.After;
 import org.junit.Rule;
 import org.junit.Test;
 
 public class NamespaceTagTest {
+
+  private static final String CUSTOM_NAMESPACE = "custom-namespace";
 
   private static final MockTracer mockTracer =
       new MockTracer(new ThreadLocalScopeManager(), MockTracer.Propagator.TEXT_MAP);
@@ -218,5 +232,124 @@ public class NamespaceTagTest {
     span.finish();
     assertEquals("workflow-id", span.tags().get(StandardTagNames.WORKFLOW_ID));
     assertFalse(span.tags().containsKey(StandardTagNames.NAMESPACE));
+  }
+
+  @Test
+  public void clientSpansUseTheClientNamespace() {
+    WorkflowClient workflowClient =
+        WorkflowClient.newInstance(
+            testWorkflowRule.getWorkflowServiceStubs(),
+            WorkflowClientOptions.newBuilder()
+                .setNamespace(CUSTOM_NAMESPACE)
+                .setInterceptors(
+                    new FakeServerWorkflowClientInterceptor(),
+                    new OpenTracingClientInterceptor(OT_OPTIONS))
+                .validateAndBuildWithDefaults());
+    ActivityClient activityClient =
+        ActivityClient.newInstance(
+            testWorkflowRule.getWorkflowServiceStubs(),
+            ActivityClientOptions.newBuilder()
+                .setNamespace(CUSTOM_NAMESPACE)
+                .setInterceptors(
+                    Arrays.asList(
+                        new FakeServerActivityClientInterceptor(),
+                        new OpenTracingActivityClientInterceptor(OT_OPTIONS)))
+                .build());
+
+    workflowClient
+        .newUntypedWorkflowStub(
+            "TestWorkflow",
+            WorkflowOptions.newBuilder()
+                .setWorkflowId("custom-namespace-workflow")
+                .setTaskQueue(testWorkflowRule.getTaskQueue())
+                .build())
+        .start("a");
+    activityClient.start(
+        "TestActivity",
+        StartActivityOptions.newBuilder()
+            .setId("custom-namespace-activity")
+            .setTaskQueue(testWorkflowRule.getTaskQueue())
+            .setScheduleToCloseTimeout(Duration.ofMinutes(1))
+            .build(),
+        "a");
+
+    List<MockSpan> spans = mockTracer.finishedSpans();
+    Set<String> operationNames = new HashSet<>();
+    for (MockSpan s : spans) {
+      operationNames.add(s.operationName());
+      assertEquals(CUSTOM_NAMESPACE, s.tags().get(StandardTagNames.NAMESPACE));
+    }
+    assertEquals(
+        new HashSet<>(Arrays.asList("StartWorkflow:TestWorkflow", "StartActivity:TestActivity")),
+        operationNames);
+  }
+
+  @Test
+  public void subclassOverridesOfSingleArgumentMethodsStillApply() {
+    AtomicBoolean workflowOverrideCalled = new AtomicBoolean();
+    AtomicBoolean activityOverrideCalled = new AtomicBoolean();
+
+    WorkflowClient.newInstance(
+        testWorkflowRule.getWorkflowServiceStubs(),
+        WorkflowClientOptions.newBuilder()
+            .setInterceptors(
+                new OpenTracingClientInterceptor(OT_OPTIONS) {
+                  @Override
+                  public WorkflowClientCallsInterceptor workflowClientCallsInterceptor(
+                      WorkflowClientCallsInterceptor next) {
+                    workflowOverrideCalled.set(true);
+                    return super.workflowClientCallsInterceptor(next);
+                  }
+                })
+            .validateAndBuildWithDefaults());
+    ActivityClient.newInstance(
+        testWorkflowRule.getWorkflowServiceStubs(),
+        ActivityClientOptions.newBuilder()
+            .setInterceptors(
+                Arrays.asList(
+                    new OpenTracingActivityClientInterceptor(OT_OPTIONS) {
+                      @Override
+                      public ActivityClientCallsInterceptor activityClientCallsInterceptor(
+                          ActivityClientCallsInterceptor next) {
+                        activityOverrideCalled.set(true);
+                        return super.activityClientCallsInterceptor(next);
+                      }
+                    }))
+            .build());
+
+    assertTrue(workflowOverrideCalled.get());
+    assertTrue(activityOverrideCalled.get());
+  }
+
+  /** Answers start calls locally so client spans can be checked without a server round trip. */
+  private static class FakeServerWorkflowClientInterceptor extends WorkflowClientInterceptorBase {
+    @Override
+    public WorkflowClientCallsInterceptor workflowClientCallsInterceptor(
+        WorkflowClientCallsInterceptor next) {
+      return new WorkflowClientCallsInterceptorBase(next) {
+        @Override
+        public WorkflowStartOutput start(WorkflowStartInput input) {
+          return new WorkflowStartOutput(
+              WorkflowExecution.newBuilder()
+                  .setWorkflowId(input.getWorkflowId())
+                  .setRunId("run-id")
+                  .build());
+        }
+      };
+    }
+  }
+
+  /** Answers start calls locally so client spans can be checked without a server round trip. */
+  private static class FakeServerActivityClientInterceptor extends ActivityClientInterceptorBase {
+    @Override
+    public ActivityClientCallsInterceptor activityClientCallsInterceptor(
+        ActivityClientCallsInterceptor next) {
+      return new ActivityClientCallsInterceptorBase(next) {
+        @Override
+        public StartActivityOutput startActivity(StartActivityInput input) {
+          return new StartActivityOutput(input.getOptions().getId(), null);
+        }
+      };
+    }
   }
 }

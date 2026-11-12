@@ -1,6 +1,7 @@
 package io.temporal.opentracing;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 
 import io.nexusrpc.Operation;
 import io.nexusrpc.Service;
@@ -14,6 +15,8 @@ import io.opentracing.util.ThreadLocalScopeManager;
 import io.temporal.client.WorkflowClient;
 import io.temporal.client.WorkflowClientOptions;
 import io.temporal.client.WorkflowOptions;
+import io.temporal.failure.CanceledFailure;
+import io.temporal.failure.NexusOperationFailure;
 import io.temporal.nexus.Nexus;
 import io.temporal.nexus.WorkflowRunOperation;
 import io.temporal.testing.internal.SDKTestWorkflowRule;
@@ -44,7 +47,11 @@ public class NexusOperationTest {
               WorkerFactoryOptions.newBuilder()
                   .setWorkerInterceptors(new OpenTracingWorkerInterceptor(OT_OPTIONS))
                   .validateAndBuildWithDefaults())
-          .setWorkflowTypes(WorkflowImpl.class, OtherWorkflowImpl.class)
+          .setWorkflowTypes(
+              WorkflowImpl.class,
+              OtherWorkflowImpl.class,
+              CancelingWorkflowImpl.class,
+              WaitForCancelWorkflowImpl.class)
           .setNexusServiceImplementation(new TestNexusServiceImpl())
           .build();
 
@@ -57,6 +64,9 @@ public class NexusOperationTest {
   public interface TestNexusService {
     @Operation
     String operation(String input);
+
+    @Operation
+    String waitForCancel(String input);
   }
 
   @ServiceImpl(service = TestNexusService.class)
@@ -73,6 +83,73 @@ public class NexusOperationTest {
                               .setWorkflowId(details.getRequestId())
                               .build())
                   ::workflow);
+    }
+
+    @OperationImpl
+    public OperationHandler<String, String> waitForCancel() {
+      return WorkflowRunOperation.fromWorkflowMethod(
+          (context, details, input) ->
+              Nexus.getOperationContext()
+                      .getWorkflowClient()
+                      .newWorkflowStub(
+                          TestWaitForCancelWorkflow.class,
+                          WorkflowOptions.newBuilder()
+                              .setWorkflowId(details.getRequestId())
+                              .build())
+                  ::waitForCancel);
+    }
+  }
+
+  @WorkflowInterface
+  public interface TestCancelingWorkflow {
+    @WorkflowMethod
+    String cancelingWorkflow(String input);
+  }
+
+  @WorkflowInterface
+  public interface TestWaitForCancelWorkflow {
+    @WorkflowMethod
+    String waitForCancel(String input);
+  }
+
+  public static class WaitForCancelWorkflowImpl implements TestWaitForCancelWorkflow {
+    @Override
+    public String waitForCancel(String input) {
+      Workflow.await(() -> false);
+      return input;
+    }
+  }
+
+  public static class CancelingWorkflowImpl implements TestCancelingWorkflow {
+    private final TestNexusService nexusService =
+        Workflow.newNexusServiceStub(
+            TestNexusService.class,
+            NexusServiceOptions.newBuilder()
+                .setOperationOptions(
+                    NexusOperationOptions.newBuilder()
+                        .setScheduleToCloseTimeout(Duration.ofSeconds(10))
+                        .build())
+                .build());
+
+    @Override
+    public String cancelingWorkflow(String input) {
+      try {
+        Workflow.newCancellationScope(
+                () -> {
+                  NexusOperationHandle<String> handle =
+                      Workflow.startNexusOperation(nexusService::waitForCancel, input);
+                  handle.getExecution().get();
+                  CancellationScope.current().cancel();
+                  handle.getResult().get();
+                })
+            .run();
+      } catch (NexusOperationFailure failure) {
+        if (failure.getCause() instanceof CanceledFailure) {
+          return "canceled";
+        }
+        throw failure;
+      }
+      return "completed";
     }
   }
 
@@ -190,5 +267,26 @@ public class NexusOperationTest {
             s.tags().get(StandardTagNames.NAMESPACE));
       }
     }
+  }
+
+  @Test
+  public void testNexusOperationCancel() {
+    WorkflowClient client = testWorkflowRule.getWorkflowClient();
+    TestCancelingWorkflow workflow =
+        client.newWorkflowStub(
+            TestCancelingWorkflow.class,
+            WorkflowOptions.newBuilder()
+                .setTaskQueue(testWorkflowRule.getTaskQueue())
+                .validateBuildWithDefaults());
+    assertEquals("canceled", workflow.cancelingWorkflow("input"));
+
+    OpenTracingSpansHelper spansHelper = new OpenTracingSpansHelper(mockTracer.finishedSpans());
+    MockSpan cancelHandlerSpan =
+        spansHelper.getSpanByOperationName(
+            "RunCancelNexusOperationHandler:TestNexusService/waitForCancel");
+    assertNotNull("Expected a cancel handler span", cancelHandlerSpan);
+    assertEquals(
+        client.getOptions().getNamespace(),
+        cancelHandlerSpan.tags().get(StandardTagNames.NAMESPACE));
   }
 }
